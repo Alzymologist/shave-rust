@@ -10,13 +10,17 @@ use sp_core::sr25519::Public;
 
 
 #[derive(Debug)]
-pub struct Tran {
-  ara: Vec<u8>,
-}
+pub struct Tran { ara: Vec<u8>, }
+// pub struct ЕSignature(pub [u8; 64]);
 
 impl Tran {
+    fn sign(&mut self, a: Signature) {
+        self.ara.extend_from_slice(&a.0);
+    }
+
     fn bytes(&mut self, a: &[u8]) {
-        for x in a { self.ara.push(*x); }
+        self.ara.extend_from_slice(&a);
+        // for x in a { self.ara.push(*x); }
     }
 
     fn add_len(&mut self) {
@@ -169,11 +173,18 @@ pub fn moke(s: &str) -> Result<String, String> {
 	print!("      "); prmas(&a[32..i]);
     a=&a[i..];
 
-    // далее идет Эра (формат Compact!)
-    // i=2; print!("Эра: "); prmas(&a[0..i]); a=&a[i..];
-    let o = Compact::<u64>::decode(&mut a).unwrap();
-    let o = u64::from(o);
-    println!("Эра: {}",&o);
+    // далее идет Эра - либо 1 байт 0, либо 2 байта
+    if a[0] == 0 {
+        println!("Эра: 0"); i=1;
+    } else {
+        i=2; print!("Эра: "); prmas(&a[0..i]);
+    }
+    a=&a[i..];
+
+    // i=20; print!("Далее должна быть эра: "); prmas(&a[0..i]);
+    // let o = Compact::<u64>::decode(&mut a).unwrap();
+    // let o = u64::from(o);
+    // println!("Эра: {}",&o);
 
     // далее Nounce (формат Compact)
     let o = Compact::<u64>::decode(&mut a).unwrap();
@@ -182,7 +193,7 @@ pub fn moke(s: &str) -> Result<String, String> {
 
     // спецкод 00 - хер знает, зачем
     i=1; print!("Код 00: "); pr_mas(&a[0..i]);
-    if a[0] != 0x00 { return Result::Err(format!("Некорректо, нужно 00")); }
+    if a[0] != 0x00 { return Result::Err(format!("Некорректно, нужно 00")); }
     a = &a[i..];
 
     // далее 2 байта код транзакции, я пока умею разбирать 5 видов
@@ -235,50 +246,56 @@ pub fn moke(s: &str) -> Result<String, String> {
 }
 
 
-pub fn moke_send_money(from: &str, to: &str, money: u128) -> Result<String, String> {
-
+pub fn moke_send_money(from: &str, to: &str, money: u128, nonce: u128) -> String {
     // Сама транза: 0500 00 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 04
     // let mut TRANZA: Vec<u8> = Vec::new();
-    let mut TRANZA = Tran { ara: [].to_vec() };
-    TRANZA.hex("050000");
-    TRANZA.add_user("Bob");
-    TRANZA.compact(9990000000000);
+    let mut tranza = Tran { ara: [].to_vec() };
+    tranza.hex("050000");
+    tranza.add_user(to);
+    tranza.compact(money); // 9990000000000);
 
     // теперь бы ее суку как-то подписать Алисой
-    // let Sign: Tran = singme(TRANZA.ara, "Alice");
+    let sign = singme( &tranza.ara,  from );
+    
+    let era: u128 = 0; // 149;
+    // let Nonce: u128 = 1; // 8;
+    // let s: Value = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
+    // let Nonce: u128 = s.as_u128().unwrap();
 
-    let Era: u128 = 0; // 149;
-    let Nonce: u128 = 1; // 8;
 
-    let mut TR = Tran { ara: [].to_vec() };
+    let mut tr = Tran { ara: [].to_vec() };
     // Начало 84 (?? compact 33) 00
-    TR.hex("8400");
+    tr.hex("8400");
     // From: Alice
-    TR.add_user("Alice");
+    tr.add_user("Alice");
     // код 01
-    TR.hex("01");
+    tr.hex("01");
     // Sign
-    for x in 1..65 { TR.hex("77"); }
-    // Эра:compact
-    TR.compact(Era);
+    // for x in 1..65 { TR.hex("77"); }
+    tr.sign(sign);
+
+    // Эра: НЕ compact!
+    // TR.compact(era);
+    tr.hex("00");
+
     // Nonce:01
-    TR.compact(Nonce);
+    tr.compact(nonce);
     // Код 00
-    TR.hex("00");
+    tr.hex("00");
     // А теперь в конце посылки сама транзакция:
-    TR.bytes(&TRANZA.ara);
-    TR.add_len();
+    tr.bytes(&tranza.ara);
+    tr.add_len();
     // END
 
-    let str = hex::encode(&TR.ara);
-    moke(&str).unwrap();
+    let str = hex::encode(&tr.ara);
+    str
+    // moke(&str).unwrap();
 
-    Result::Err(String::from("НЕ Отличненько"))
+    // Result::Err(String::from("НЕ Отличненько"))
 }
 
 
-/*
-pub fn singme(message: &[u8], account: &str) -> Signature { 
+pub fn singme(message: &[u8], account: &str) -> Signature {
     // let suri = SecretUri::from_str(account).expect("Parse SURI");
     let pair = match sr25519::Pair::from_string(&account, None) {
             Ok(val) => val,
@@ -288,11 +305,13 @@ pub fn singme(message: &[u8], account: &str) -> Signature {
             },
     };
     println!("==> sign: [{}]", hex::encode( pair.public().to_raw_vec() ));
-    let mut blytes: Signature = pair.sign(&message[..]);
+    let blytes: Signature = pair.sign(&message[..]);
     println!("==> signed: [{}]", hex::encode(&blytes) );
     // проверяем подпись
     // let veri = sr25519::Pair::verify( &pair.sign(&message[..]) , &message[..], &pair.public() );
     // println!("--> проверка: {:#?}",&veri);
+    // let s = format!("{}",&blytes); //  as &[u8]
+    // let a: &[u8] = &hex::decode(hex).unwrap();    
+    // return &blytes.0;
     blytes
 }
-*/

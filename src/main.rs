@@ -8,26 +8,22 @@ use std::io::prelude::*;
 
 //===========================================================
 // моё блять собственное
+mod mokele_mbembe;
+use mokele_mbembe::{moke, moke_send_money};
 
-// use crate::moke::prmas;
-
+use sp_core::crypto::Ss58AddressFormat;
 //===========================================================
 // привинчиваем подпись блокчейна
 use sp_core::{crypto::Pair, sr25519};
-
 use sp_core::ByteArray;
-
 use sp_core::sr25519::Signature;
 use sp_core::sr25519::Public;
 
-
-// use sp_core::Pair;
-
 //===========================================================
-
-mod mokele_mbembe;
-use mokele_mbembe::moke;
-
+// пробуем привинтить этот чертов base58 специальной блять особой версии из провинции коньяк
+use sp_core::crypto::Ss58Codec;
+// #[cfg(feature = "std")]
+// use base58::{FromBase58, ToBase58};
 //===========================================================
 
 // Буду писать комменты
@@ -314,13 +310,10 @@ curl -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method":
  let bbb: Value = client.request("chain_getBlock",rpc_params![&block_hash]).await?;
 
 // ТУТ БУДЕМ ПИСАТЬ раз в секунду
-// eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 
-
-
+/*
 let account = "//Alice";
 // let suri = SecretUri::from_str(account).expect("Parse SURI");
-
 let pair = match sr25519::Pair::from_string(&account, None) {
         Ok(val) => val,
         Err(err) => {
@@ -328,20 +321,17 @@ let pair = match sr25519::Pair::from_string(&account, None) {
 	    sr25519::Pair::from_string(&format!("//Alice"), None).unwrap()
 	},
 };
-
 println!("id: {}", hex::encode( pair.public().to_raw_vec() ));
-
 // подписываем message
 let message = b"Signed payload";
 // let Signature(mut blytes) = pair.sign(&message[..]);
 let mut blytes: Signature = pair.sign(&message[..]);
-println!("sign: {}", hex::encode(&blytes) );
+println!("sign: [{}]", hex::encode(&blytes) );
 
 // проверяем подпись
 let veri = sr25519::Pair::verify( &pair.sign(&message[..]) , &message[..], &pair.public() );
 println!("--> проверка: {:#?}",&veri);
-
-
+*/
 // let tranz = subxt::dynamic::tx(
 //     "Balances",
 //     "transfer",
@@ -350,86 +340,87 @@ println!("--> проверка: {:#?}",&veri);
 //         Value::u128(123_456_789_012_345),
 //     ],
 // );
-
-
-
 // let h: String = bytes.encode_hex();
 // println!("===> bytes=[{:#?}]",h );
-
 // let signature = Signature(bytes);
-
-
 // Pair.sign(&message)
-
 // let public = Public::from_raw( hex!( "b4bfa1f7a5166695eb75299fd1c4c03ea212871c342f2c5dfea0902b2c246918" ) );
 // let signature = Signature::from_raw(hex!( "5a9755f069939f45d96aaf125cf5ce7ba1db998686f87f2fb3cbdea922078741a73891ba265f70c31436e18a9acd14d189d73c12317ab6c313285cd938453202" ));
 // let message = b"Verifying that I am the owner of 5G9hQLdsKQswNPgB499DeA5PkFBbgkLPJWkkS6FAM6xGQ8xD. Hash: 221455a3\n";
 //                assert!(Pair::verify_deprecated(&signature, &message[..], &public));
 //                assert!(!Pair::verify(&signature, &message[..], &public));
 // println!("===> Public=[{:#?}]\n===> signature=[{:#?}]",public, signature );
-
-
-
-
-
-
-
-
-
-
-
 //    let block_hash = if let Value::String(a) = block_hash_data { a } else { println!("Unexpected block hash format.");  continue; };
-
-
 // println!("Тип значения bbb: {:#?}", &bbb);
-
 // ""; // client.request("chain_getBlock",rpc_params![&block_hash]).await?;
-
 //    let block_hash_data: Value = client.request("chain_getBlockHash",rpc_params![]).await?;
 //    let block_hash = if let Value::String(a) = block_hash_data { a } else { println!("Unexpected block hash format.");  continue; };
-
 //    let bbb: Value = client.request("chain_getBlockHash",rpc_params![]).await?;
-//                       let bbx = if let Value::String(aa) = bbb { aa } else { println!("Unexpected block hash format."); continue; };
-
+//    let bbx = if let Value::String(aa) = bbb { aa } else { println!("Unexpected block hash format."); continue; };
 //  let parent: String = &bbb["block"]["header"]["parentHash"];
-
 // let parent = if let Value::String(aa) = bbb { aaa } else { println!("Unexpected block hash format.");  continue; };
-
 // let parent = &(&bbb["block"]["header"]["parentHash"]).to_string();
 //  if !let ext0 = &(&bbb["block"]["extrinsics"][0]).to_string() { continue; }
 
 
-
-
-
-
-
-
-
-// Pair.sign(&message)
-
-
-
-
-
-
-
-
-
-
-
+// Если блок не изменился, вернуться в цикл и не продолжать
  let parent = if let Value::String(a) = &bbb["block"]["header"]["parentHash"] { a } else { continue; };
+ println!(" * * * * ===> OK2");
+
+// ТУТ БУДЕМ ПИСАТЬ раз в ТРАНЗАКЦИЮ (не в секунду)
+// eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+
+
+    // let a58: Ss58AddressFormat = [u8;32]::from();
+    // let s: &[u8] = b"12345";
+    // let d = s.from_base58(); // .map_err(|_| PublicError::BadBase58)?;
+      
+
+    // Получить nonce
+    let s: Value = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
+    let nonce: u128 = s.as_u64().unwrap().into();
+
+    // Посчитать
+    let s = moke_send_money("Alice", "Bob", 1, nonce); // .unwrap();
+    moke(&s).unwrap();
+    println!(" * * * * ===> OK:\n[{}]",&s);
+
+
+    // Save out file
+    let llogex = "/tmp/lleo_extrinsic.txt";
+    let mut file = File::create(llogex)?;
+    file.write_all(  &format!("{}",&s).as_bytes() )?;
+
+    let res: Value = client.request("author_submitAndWatchExtrinsic", rpc_params![ &format!("0x{}",&s ) ]).await?;
+    println!(" * * * * ===> RES:\n[{}]",&res);
+
+
+    // {"id":51,"jsonrpc":"2.0","method":"author_submitAndWatchExtrinsic","params":["0x5d028400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d0130e79a3f58a40c719349fbe3e0f851f94253ceefc7198cc61b3d6ed09134c130b4a6998adb1ea59505362af15dff74067c1a61452b94e522d7f1e7271497c587e5032c00050000d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d230080fb82bc54b9388b45df02"]}
+    // let s: Value = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
+
+
+
+
+
+
+
+
+
+
+
 // let ext0 = if let Value::String(a) = &bbb["block"]["extrinsics"][0] { a } else { continue; };
  let ext1 = if let Value::String(a) = &bbb["block"]["extrinsics"][1] { a } else { continue; };
+
+ println!(" * * * * ===> OK1");
+
+
+ 
 
 // let bhd: Value = client.request("chain_getBlockHash",rpc_params![]).await?;
 // let bhs = if let Value::String(au) = bhd { au } else { println!("Unexpected block hash format.");  continue; };
 
-
 // if let String(a) = bbb { a } else { println!("Unexpected block hash format.");  continue; };
-
 // let ext1 = &bbb["block"]["extrinsics"].0;
-
 
 // const signedBlock = await api.rpc.chain.getBlock(blockHash);
 println!( "\n\t===> Блок:
@@ -444,77 +435,6 @@ s1.remove(0);  // remove first
 s1.remove(0);  // remove first
 
 moke(&s1).unwrap();
-
-
-
-/*
-=========== 0x280402000b 90b9ec 238601
-=========== 0x4502
-84
-00
-d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d
-01
-106ad87abccb8ad8ee0ff2260f3b0803ccc099d280cef7abcffc4369dcaf4100
-0cfb261bd5fe5366a286031ee001eab336c73b7b1fd9ff58b33567704b58568d
-4502 20
-00
-calindex: 0500
-00
-8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48
-0b00bc66fa1509
-
-
-=========== 0x280402000b 3046ed 238601
-=========== 0x
-Длина (compact) 4502
-84
-00
-Кто-Алиса: d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d
-01
-Подпись:
-    bc964e975a95f0c1019c00e45a84bcf0da0bd5d4dbf420dcaf4e3eccb58a2558
-    cacd17e43dc1f237542f6425df28c9b8dbe36ac98a96b9b34a2c5e822372028f
-time: b502
-nounce (compact): 24
-00
-calindex: 0500 (видимо, код перевода)
-00
-Кому-Бобу: 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48
-Сумма (compact): 0b 00 bc 66 fa 15 09 число: 9990000000000 длина байт: 7 массив: 0B 00 BC 66 FA 15 09 
-
-00
-8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a480b00bc66fa1509
-
-
-Экстринсик пришел:
-=========== 0x280402000bf0f6f4238601
-=========== 0xb102
-84
-00
-d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d
-01
-6e492d9ad750f84d6750c5af2b62fc3502ddd28398db391b62c7a37d2c646e3a
-88e46f0dab376d374bf62a76e3f67c68ee23202e1022c66cf01a1b7cf1879d8b
-f503 28
-00
-callindex: 0800
-длина: 0101
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-Twart/Endorse 01
-
-
-8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48
-*/
-
-
-
-
-
-
-
-
-
-
 
 // twox_128!(b"System");
 //println!( "\n\n#######################\n0x{}{}\n#####################\n",
@@ -539,48 +459,11 @@ Twart/Endorse 01
 //	    &array_bytes::hex2array_unchecked("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"),
 //	);
 
-//        let pair2 = sr25519::Pair::from_string(&format!("Alice"), None).unwrap(); // d4...27d
-//let account = "//Alice";
-//let pair = match sr25519::Pair::from_string(&account, None) {
-//        Ok(val) => val,
-//        Err(err) => {
-//    	    println!("==> Error Pair [{}]: {:#?}, тогда будем использовать [//Alice]",&account,&err);
-//	    sr25519::Pair::from_string(&format!("//Alice"), None).unwrap()
-//	},
-//    };
-
-// ALICE.Pair = keyring.addFromUri('//Alice',
-
-//	let public = pair.public();
-//	println!("--> public = {:#?}",public);
-//
-//	let mydata = "0x1234";
-//	let message = array_bytes::hex2bytes_unchecked(&mydata);
-//	println!("--> сообщение [{}] = {:#?}",&mydata,&message[..]);
-//
-//	let mut signature = pair.sign(&message[..]);
-//	println!("--> signature = 0x{:#?}",&signature);
-//
-
-//        let muhaha: Value = client.request("system_name", rpc_params![]).await?;
-//        let muhaha: Value = client.request(
-//		"system_accountNextIndex", // "params":["'${ALICE}'"]}'
-//                // "author_submitAndWatchExtrinsic",
-//                rpc_params![
-//                    &format!(
-//		    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
-//                    // "0x400408002ccccccccccccccccccccccc00"
-//                    )
-//                ],
-//            ).await?;
-//        println!("===> muhaha: {:#?}",&muhaha);
-
 
 //    fn sign(&self, message: &[u8]) -> Signature {
 //	let context = signing_context(SIGNING_CTX);
 //	self.0.sign(context.bytes(message)).into()
 //    }
-
 
 //
 //array_bytes::hex2array_unchecked("0x4c6f7665204a616e6520466f7265766572"),
@@ -593,9 +476,6 @@ Twart/Endorse 01
 //	println!("\n\n--==================================\n");
 //	panic!("OK");
 
-//    let pair2 = Pair::from_string(&format!("Alice"), None).unwrap();
-//    let pair2 = Pair::from_string(&format!("Alice"), None).unwrap();
-
     // known address of DEV_PHRASE with 1.1
 //    let known = array_bytes::hex2bytes_unchecked(
 //        "d6c71059dbbe9ad2b0ed3f289738b800836eb425544ce694825285b958ca755e",
@@ -606,17 +486,6 @@ Twart/Endorse 01
 
 
 //        let s: Value = client.request("author_submitAndWatchExtrinsic", rpc_params![]).await?;
-
-// let mythepid="eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-// let mytheuip="8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48";
-
-//	println!("code: [0x0802{}04{}]",
-//            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-//            "8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48"
-//	);
-
-
-
 
 // {"id":1635,"jsonrpc":"2.0","method":"author_submitAndWatchExtrinsic","params":["0x400408002ccccccccccccccccccccccc00"]}
 /*
@@ -632,13 +501,6 @@ Twart/Endorse 01
         println!("Ок, muhaha: {:#?}",&muhaha);
 */
 
-// a903
-// 8400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d01ca4090a6e55e2ba7c8141ddeb93749a51dfafbff32fc86419e2b9ec0b5ecd7680fd2e4affb4c7c0402ade011b7bcd14eb497fc9e7713198a8dbd9a987754a68835002400080200000000000000000000000000000000000000000000000000000000000000000c306721211d5404bd9da88e0204360a1a9ab8b87c66c1bc2fcdd37f3c2222cc201cbd2d43530a44705ad088af313e18f80b53ef16b36177cd4b77b846f2a5f07ce659a7a1628cdd93febc04a4e0646ea20e9f5f0ce097d9a05290d4a9e054df4e
-// ca4090a6e55e2ba7c8141ddeb93749a51dfafbff32fc86419e2b9ec0b5ecd7680fd2e4affb4c7c0402ade011b7bcd14eb497fc9e7713198a8dbd9a987754a688
-
-
-//{8400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d015e34501a8cac302f601467b65899106497fd483197a1c14bbc543766b03f14761878d8f85f715f6ed477c1aa01876aa5d5be6137bd02013f95a4b739c3948b8e25021c0008002ccccccccccccccccccccccc00
-
 //  "id": 1,
 //  "jsonrpc": "2.0",
 //  "method": "author_submitAndWatchExtrinsic",
@@ -647,8 +509,6 @@ Twart/Endorse 01
 //  ]
 //}
 
-
-
 //        println!("Ок, muhaha: {:#?}",&muhaha);
 //  спросить system_name
 // curl -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method": "system_name", "params":[]}' http://loc
@@ -656,8 +516,6 @@ Twart/Endorse 01
 // curl -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method": "system_version", "params":[]}' http://
 // # спросить метадату
 // curl -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method": "state_getMetadata", "params":[null]}' http://localhost:9933
-
-
 
 //	println!(" -----------> Done. Print!");
 //	println!(" [!] OKI 7 {:#?}",&events);
