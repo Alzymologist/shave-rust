@@ -44,6 +44,10 @@ ca671c3f82740e958315cf2b9f1f5472fdfc07ccdd943b4597599ad7e142958b
 
 Подозреваю, дело в нулевой эре.
 
+UPD: polkadot.api успешно отправляет так:
+
+{"id":53,"jsonrpc":"2.0","method":"author_submitAndWatchExtrinsic","params":["0x2d028400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d011841dd96995acc5199e0d9b378c39c6def8e12476e02483f9022078da7b8621d933a6aa17de993b1ecb1bb73f1cc2455d76e3dda7b4ede6a3fcee7bcdcc5548dc50004000500008eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a4804"]}
+
 ==========================================================================
 Раннее:
 
