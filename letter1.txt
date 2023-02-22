@@ -1,0 +1,45 @@
+Для запросов через JS с сайта документацией является https://polkadot.js.org/docs/
+
+Запросить инфо об аккаунте Алисы (nonce, balance и т.п.):
+	api.query.system.account(ALICE.id);
+
+Перевести SKOKA денег Бобу:
+ api.tx.balances.transfer(BOB.id, SKOKA).signAndSend(ALICE.Pair);
+
+https://polkadot.js.org/docs/substrate/rpc/
+
+подписывание вызывается так:
+https://docs.rs/sp-core/latest/src/sp_core/sr25519.rs.html#556
+
+примеры в тестах:
+https://docs.rs/sp-core/latest/src/sp_core/sr25519.rs.html#793
+
+======================================================================
+
+Пока научился делать самые простые запросы - типа узнать имя, версию:
+    client.request("system_name", rpc_params![])
+    client.request("system_version", rpc_params![])
+
+Запрос на размещение данных должен выглядеть очевидно так:
+    client.request("author_submitAndWatchExtrinsic",rpc_params![ какие-то параметры ])
+
+Изучение документации
+https://github.com/w3f/PSPs/blob/master/PSPs/drafts/psp-6.md#189-author_submitandwatchextrinsic-pubsub
+говорит, что в параметрах надо передавать "HEX - The SCALE encoded extrinsic."
+
+Наблюдения за сайтом https://polkadot.js.org/apps/#/extrinsics
+
+--------------------------
+
+Оптимизация rust
+cargo +nightly build -Z build-std=std,panic_abort --target x86_64-apple-darwin --release
+cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target x86_64-unknown-linux-gnu --release
+cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --release
+
+GIT
+
+git clone git@github.com:lleokaganov/shave-backend.git
+git status
+git add .
+git commit -m "major: init"
+git push
