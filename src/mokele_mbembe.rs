@@ -246,6 +246,39 @@ pub fn moke(s: &str) -> Result<String, String> {
 }
 
 
+
+
+
+
+
+
+
+
+// use frame_metadata::v14::{RuntimeMetadataV14, StorageEntryMetadata};
+// use crate::{decode_all_as_type, parse_transaction, MetaInput, ShortSpecs};
+
+// use primitive_types::H256;
+// fn specs() -> ShortSpecs {
+//     ShortSpecs {
+//         base58prefix: 42,
+//         decimals: 12,
+//         name: "westend".to_string(),
+//         unit: "WND".to_string(),
+//     }
+// }
+// fn metadata(filename: &str) -> RuntimeMetadataV14 {
+//     let metadata_hex = std::fs::read_to_string(filename).unwrap();
+//     let metadata_vec = hex::decode(metadata_hex.trim()).unwrap()[5..].to_vec();
+//     RuntimeMetadataV14::decode(&mut &metadata_vec[..]).unwrap()
+// }
+//
+
+
+
+
+
+
+
 pub fn moke_send_money(from: &str, to: &str, money: u128, nonce: u128) -> String {
     // Сама транза: 0500 00 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 04
     // let mut TRANZA: Vec<u8> = Vec::new();
@@ -253,6 +286,67 @@ pub fn moke_send_money(from: &str, to: &str, money: u128, nonce: u128) -> String
     tranza.hex("050000");
     tranza.add_user(to);
     tranza.compact(money); // 9990000000000);
+
+    // Теперь делаем расширенную ея версию для подписи
+    let mut tranza_full = Tran { ara: [].to_vec() };
+    tranza_full.hex("050000");
+    tranza_full.add_user(to);
+    tranza_full.compact(money);
+
+
+// https://github.com/Alzymologist/substrate-parser/blob/6e45f461dfed4b02f9e3084d379f0a3d5b4cf0cc/src/tests.rs#L269
+
+// alexander_slesarev: что идёт в подписываемую транзакцию на самом деле:
+// метод, потом екстеншн
+// Метод ты правильно раздуплил, теперь про екстеншн.екстеншн состоит из:
+
+// - эра
+    tranza_full.hex("00");
+
+// - компакт от нонса
+    tranza_full.compact(nonce);
+
+// - компакт от типа (0 норм)
+    tranza_full.hex("00");
+
+// - версия метадаты (u32)
+
+// - версия транзакции (u32, скорее всего там что-то от 0 до 10 или в этом духе маленькое, называется оно TxVersion и наверное где-то его можно прочитать)
+// - генезис хеш
+// - хеш блока
+
+
+
+
+// let data = hex::decode("9c0403008eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a480284d717d5031504025a62029723000007000000e143f23803ac50e8f6f8e62695d1ce9e4e1d68aa36c1cd2cfd15340213f3423e98a8ee9e389043cd8a9954b254d822d34138b9ae97d3b7f50dc6781b13df8d84").unwrap();
+// let reply = parse_transaction(
+//     &data,
+//     MetaInput::Raw(metadata("/tmp/lleo_metadata.scale")),
+//     H256(
+//         hex::decode("e143f23803ac50e8f6f8e62695d1ce9e4e1d68aa36c1cd2cfd15340213f3423e")
+//             .unwrap()
+//             .try_into()
+//             .unwrap(),
+//     ),
+// )
+// .unwrap()
+// .card(&specs());
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // теперь бы ее суку как-то подписать Алисой
     let sign = singme( &tranza.ara,  from );

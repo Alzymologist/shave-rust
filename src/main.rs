@@ -12,6 +12,30 @@ mod mokele_mbembe;
 use mokele_mbembe::{moke, moke_send_money};
 
 use sp_core::crypto::Ss58AddressFormat;
+
+//================ сраное нечто для парсинка структуры
+
+use sp_core::serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Perda {
+    specName: String,
+    implName: String,
+	authoringVersion: u32,
+	specVersion: u32,
+    implVersion: u32,
+    transactionVersion: u32,
+    stateVersion: u32,
+}
+
+
+
+
+
+
+
+
 //===========================================================
 // привинчиваем подпись блокчейна
 use sp_core::{crypto::Pair, sr25519};
@@ -163,7 +187,7 @@ if &meta_scale[0..4] != b"meta" {
     //     hex::decode(hex_input_trimmed).map_err(|_| error::Error::NotHex(what))
     // }
 
-    file.write_all(  &format!("{}",&metadata).as_bytes() )?;
+//    file.write_all(  &format!("{}",&metadata).as_bytes() )?;
 
 
 /*
@@ -263,12 +287,11 @@ println!("Вот оно блять: ------------------------
         };
 //        println!("{:#?}",&metadata_v14);
 
-//    let llog = "/tmp/rust-blokchain-Metadata.txt";
+    let llogm = "/tmp/lleo_metadata14.txt";
 //        println!("Ок, получили metadata_v14, записано в {}",llog);
-//    let mut file = File::create(llog)?;
+    let mut file = File::create(llogm)?;
 // //    file.write_all(b"Hello, world!")?;
-//    file.write_all( &format!("{:#?}",&metadata_v14).as_bytes() )?;
-
+    file.write_all( &format!("{:#?}",&metadata_v14).as_bytes() )?;
 
 	// 3 запрос к блокчейну - state_getStorage
 /*
@@ -377,22 +400,55 @@ println!("--> проверка: {:#?}",&veri);
       
 
     // Получить nonce
-    let s: Value = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
-    let nonce: u128 = s.as_u64().unwrap().into();
+    let nonce: u128 = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
+    // Получить genesis_hash
+    let genesis_hash: String = client.request("chain_getBlockHash", rpc_params![ "0" ]).await?;
 
-    // Посчитать
-    let s = moke_send_money("Alice", "Bob", 1, nonce); // .unwrap();
-    moke(&s).unwrap();
-    println!(" * * * * ===> OK:\n[{}]",&s);
+    // let suka: Perda = client.request("chain_getRuntimeVersion", rpc_params![ ]).await?; // .expect("Unknown genesis_hash");
+
+    // let ogon: Value = client.request("chain_getRuntimeVersion", rpc_params![]).await?;
+    // let perda = if let Value::String(a) = s { a } else { println!("Unknown name format."); };
+
+//    let bhd: Value = client.request("chain_getBlockHash",rpc_params![]).await?;
 
 
-    // Save out file
-    let llogex = "/tmp/lleo_extrinsic.txt";
-    let mut file = File::create(llogex)?;
-    file.write_all(  &format!("{}",&s).as_bytes() )?;
 
-    let res: Value = client.request("author_submitAndWatchExtrinsic", rpc_params![ &format!("0x{}",&s ) ]).await?;
-    println!(" * * * * ===> RES:\n[{}]",&res);
+
+    println!("
+
+    nonce = {nonce}
+    genesis_hash = {genesis_hash}
+    nons: :?
+
+    "); // , &Perda);
+
+/*
+    payload := ExtrinsicPayloadV4{
+        ExtrinsicPayloadV3: ExtrinsicPayloadV3{
+          Method:      mb,
+          Era:         00 // era,
+          Nonce:       o.Nonce,
+          Tip:         00, //	o.Tip,
+          SpecVersion: просто u32 100 o.SpecVersion,
+          GenesisHash: o.GenesisHash,
+          BlockHash:   o.BlockHash,
+        },
+        TransactionVersion: просто u32 1 // o.TransactionVersion,
+      }
+*/
+
+    // // Посчитать
+    // let s = moke_send_money("Alice", "Bob", 1, nonce); // .unwrap();
+    // moke(&s).unwrap();
+    // println!(" * * * * ===> OK:\n[{}]",&s);
+
+    // // Save out file
+    // let llogex = "/tmp/lleo_extrinsic.txt";
+    // let mut file = File::create(llogex)?;
+    // file.write_all(  &format!("{}",&s).as_bytes() )?;
+
+    // let res: Value = client.request("author_submitAndWatchExtrinsic", rpc_params![ &format!("0x{}",&s ) ]).await?;
+    // println!(" * * * * ===> RES:\n[{}]",&res);
 
 
     // {"id":51,"jsonrpc":"2.0","method":"author_submitAndWatchExtrinsic","params":["0x5d028400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d0130e79a3f58a40c719349fbe3e0f851f94253ceefc7198cc61b3d6ed09134c130b4a6998adb1ea59505362af15dff74067c1a61452b94e522d7f1e7271497c587e5032c00050000d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d230080fb82bc54b9388b45df02"]}
