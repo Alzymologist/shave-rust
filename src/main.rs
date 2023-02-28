@@ -14,35 +14,20 @@ use mokele_mbembe::{moke, moke_send_money};
 use sp_core::crypto::Ss58AddressFormat;
 
 //================ сраное нечто для парсинка структуры
-
-use sp_core::serde::{Deserialize, Serialize};
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct Perda {
-    specName: String,
-    implName: String,
-	authoringVersion: u32,
-	specVersion: u32,
-    implVersion: u32,
-    transactionVersion: u32,
-    stateVersion: u32,
+pub struct AllYouNeedIsLove {
+    nonce: u128,
+    genesis_hash: String,
+    era: u128,
+    spec_version: u32,
+    transaction_version: u32,
+    block_hash: String,
 }
-
-
-
-
-
-
-
-
 //===========================================================
 // привинчиваем подпись блокчейна
 use sp_core::{crypto::Pair, sr25519};
 use sp_core::ByteArray;
 use sp_core::sr25519::Signature;
 use sp_core::sr25519::Public;
-
 //===========================================================
 // пробуем привинтить этот чертов base58 специальной блять особой версии из провинции коньяк
 use sp_core::crypto::Ss58Codec;
@@ -332,6 +317,15 @@ curl -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method":
 
  let bbb: Value = client.request("chain_getBlock",rpc_params![&block_hash]).await?;
 
+ let mut all_you = AllYouNeedIsLove {
+    nonce: 0,
+    genesis_hash: "".to_string(),
+    era: 0,
+    spec_version: 0,
+    transaction_version: 0,
+    block_hash: "".to_string(),
+ };
+
 // ТУТ БУДЕМ ПИСАТЬ раз в секунду
 
 /*
@@ -397,77 +391,42 @@ println!("--> проверка: {:#?}",&veri);
     // let a58: Ss58AddressFormat = [u8;32]::from();
     // let s: &[u8] = b"12345";
     // let d = s.from_base58(); // .map_err(|_| PublicError::BadBase58)?;
-      
 
+    
     // Получить nonce
-    let nonce: u128 = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
+    all_you.nonce = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
+
     // Получить genesis_hash
-    let genesis_hash: String = client.request("chain_getBlockHash", rpc_params![ "0" ]).await?;
+    if all_you.genesis_hash == "" {
+        all_you.genesis_hash = client.request("chain_getBlockHash", rpc_params![ "0" ]).await?;
+        // Получить specVersion и transactionVersion
+        let suka: Value = client.request("chain_getRuntimeVersion", rpc_params![ ]).await?; // .expect("Unknown genesis_hash");
+        all_you.spec_version = suka["specVersion"].as_u64().expect("### ERROR ###") as u32;
+        all_you.transaction_version = suka["transactionVersion"].as_u64().expect("### ERROR ###") as u32;
+    }
 
-    // let suka: Perda = client.request("chain_getRuntimeVersion", rpc_params![ ]).await?; // .expect("Unknown genesis_hash");
+    // Прикинуть era
+    all_you.era = 0;
 
-    // let ogon: Value = client.request("chain_getRuntimeVersion", rpc_params![]).await?;
-    // let perda = if let Value::String(a) = s { a } else { println!("Unknown name format."); };
+    // Ну и блок
+    all_you.block_hash = last_block.clone(); //  его не надо спрашивать
+    // let block_hash: String = client.request("chain_getBlockHash", rpc_params![]).await?;
 
-//    let bhd: Value = client.request("chain_getBlockHash",rpc_params![]).await?;
+    let s = moke_send_money("Alice", "Bob", 1, &all_you); // .unwrap();
+    // println!("==> Вся посылка целиком st2=:\n[{s}]");
 
+    // Даже запишем ее от широты душевной на диск
+    let llogex = "/tmp/lleo_extrinsic.txt";
+    let mut file = File::create(llogex)?;
+    file.write_all( &format!("{}",&s).as_bytes() )?;
 
+    // Отправим
+    let res: Value = client.request("author_submitAndWatchExtrinsic", rpc_params![ &format!("0x{}",&s ) ]).await?;
+    println!(" * * * * ===> И вот результат:\n[{}]",&res);
 
-
-    println!("
-
-    nonce = {nonce}
-    genesis_hash = {genesis_hash}
-    nons: :?
-
-    "); // , &Perda);
-
-/*
-    payload := ExtrinsicPayloadV4{
-        ExtrinsicPayloadV3: ExtrinsicPayloadV3{
-          Method:      mb,
-          Era:         00 // era,
-          Nonce:       o.Nonce,
-          Tip:         00, //	o.Tip,
-          SpecVersion: просто u32 100 o.SpecVersion,
-          GenesisHash: o.GenesisHash,
-          BlockHash:   o.BlockHash,
-        },
-        TransactionVersion: просто u32 1 // o.TransactionVersion,
-      }
-*/
-
-    // // Посчитать
-    // let s = moke_send_money("Alice", "Bob", 1, nonce); // .unwrap();
-    // moke(&s).unwrap();
-    // println!(" * * * * ===> OK:\n[{}]",&s);
-
-    // // Save out file
-    // let llogex = "/tmp/lleo_extrinsic.txt";
-    // let mut file = File::create(llogex)?;
-    // file.write_all(  &format!("{}",&s).as_bytes() )?;
-
-    // let res: Value = client.request("author_submitAndWatchExtrinsic", rpc_params![ &format!("0x{}",&s ) ]).await?;
-    // println!(" * * * * ===> RES:\n[{}]",&res);
-
-
-    // {"id":51,"jsonrpc":"2.0","method":"author_submitAndWatchExtrinsic","params":["0x5d028400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d0130e79a3f58a40c719349fbe3e0f851f94253ceefc7198cc61b3d6ed09134c130b4a6998adb1ea59505362af15dff74067c1a61452b94e522d7f1e7271497c587e5032c00050000d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d230080fb82bc54b9388b45df02"]}
-    // let s: Value = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
-
-
-
-
-
-
-
-
-
-
-
-// let ext0 = if let Value::String(a) = &bbb["block"]["extrinsics"][0] { a } else { continue; };
- let ext1 = if let Value::String(a) = &bbb["block"]["extrinsics"][1] { a } else { continue; };
-
- println!(" * * * * ===> OK1");
+    // let ext0 = if let Value::String(a) = &bbb["block"]["extrinsics"][0] { a } else { continue; };
+    let ext1 = if let Value::String(a) = &bbb["block"]["extrinsics"][1] { a } else { continue; };
+    println!(" * * * * ===> OK1");
 
 
  

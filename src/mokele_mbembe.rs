@@ -14,6 +14,7 @@ pub struct Tran { ara: Vec<u8>, }
 // pub struct ЕSignature(pub [u8; 64]);
 
 impl Tran {
+
     fn sign(&mut self, a: Signature) {
         self.ara.extend_from_slice(&a.0);
     }
@@ -41,9 +42,30 @@ impl Tran {
     }
 
     fn add_user(&mut self, name: &str) {
-        let a: &[u8] = &hex::decode(user_name(name) ).unwrap();
+        self.hexstring( &user_name(name) );
+    }
+
+    fn hexstring(&mut self, name: &String) {
+        let mut data = name.clone();
+        if &data[0..2] == "0x" { data = (data[2..]).to_string(); }
+        let a: &[u8] = &hex::decode(data).unwrap();
         for x in a { self.ara.push(*x); }
     }
+
+    fn clone(&mut self) -> Tran {
+        let mut x = Tran { ara: [].to_vec() };
+        x.ara.extend_from_slice(&self.ara);
+        x
+    }
+
+    fn u32(&mut self, x: &u32) {
+        self.ara.push( ((x)       & 0xFF) as u8 );
+        self.ara.push( ((x >> 8)  & 0xFF) as u8 );
+        self.ara.push( ((x >> 16) & 0xFF) as u8 );
+        self.ara.push( ((x >> 24) & 0xFF) as u8 );
+    }
+
+
 }
 
 
@@ -275,49 +297,92 @@ pub fn moke(s: &str) -> Result<String, String> {
 
 
 
+use crate::AllYouNeedIsLove;
 
+pub fn moke_send_money(from: &str, to: &str, money: u128, ebola: &AllYouNeedIsLove ) -> String {
 
+    // Вот такие нам прилетели данные:
 
-
-pub fn moke_send_money(from: &str, to: &str, money: u128, nonce: u128) -> String {
-    // Сама транза: 0500 00 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 04
-    // let mut TRANZA: Vec<u8> = Vec::new();
+    println!("
+------ ebola --------
+Method:      mb
+Era:         {}
+Nonce:       {}
+Tip:         00
+SpecVersion: {}
+GenesisHash: {}
+BlockHash:   {}
+TransactionVersion: {}
+.....
+From:  [{from}]
+To:    [{to}]
+Money: {money}
+----------------------",
+    ebola.era,
+    ebola.nonce,
+    ebola.spec_version,
+    ebola.genesis_hash,
+    ebola.block_hash,
+    ebola.transaction_version
+);
+    
+    // Сама операция, пример: 0500 00 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 04
     let mut tranza = Tran { ara: [].to_vec() };
-    tranza.hex("050000");
-    tranza.add_user(to);
-    tranza.compact(money); // 9990000000000);
+    tranza.hex("0500"); // код транзакции
+    tranza.hex("00"); // ноль
+    tranza.add_user(to); // кому деньги
+    tranza.compact(money); // сколько денег
 
-    // Теперь делаем расширенную ея версию для подписи
-    let mut tranza_full = Tran { ara: [].to_vec() };
-    tranza_full.hex("050000");
-    tranza_full.add_user(to);
-    tranza_full.compact(money);
+    // Теперь делаем расширенную версию операуии для подписи по схеме мистера Трона:
+    let mut tranza_full = tranza.clone(); // само тело транзакции
+    tranza_full.hex("00"); // Era: можно 00
+    tranza_full.compact(ebola.nonce); // Nonce:
+    tranza_full.hex("00"); // Tip: чаевые, можно 00
+    tranza_full.u32(&ebola.spec_version); // SpecVersion: просто u32, без compact (!)
+    // tranza_full.compact(ebola.spec_version as u128); // SpecVersion: но пробовал и compact
+    tranza_full.hexstring(&ebola.genesis_hash); // GenesisHash
+    tranza_full.hexstring(&ebola.block_hash); // BlockHash
+    tranza_full.u32(&ebola.transaction_version); // TransactionVersion: просто u32, без compact (!)
+    // tranza_full.compact(ebola.transaction_version as u128); // TransactionVersion: но пробовал и compact
 
+    // теперь бы ее суку как-то подписать Алисой:
+    let sign = singme( &tranza_full.ara, from );
+
+    // Так, теперь формируем целиком всю посылку:
+    let mut tr = Tran { ara: [].to_vec() };
+    tr.hex("8400");  // Начало 84 (compact от 33?) 00
+    tr.add_user("Alice"); // From: Alice
+    tr.hex("01"); // код 01
+    tr.sign(sign); // здесь вставляем подпись
+    tr.hex("00"); // Эра: можно 00, НЕ compact! TR.compact(era);
+    tr.compact(ebola.nonce); // Nonce
+    tr.hex("00"); // Код 00
+    tr.bytes(&tranza.ara); // сама операция (короткая версия)
+    tr.add_len(); // и в начало добавим compact-длину всей этой мандулы
+    // END
+
+    let str = hex::encode(&tr.ara);
+
+    println!("==> Операция: [{}]", hex::encode(&tranza.ara) );
+    println!("==> Операция на подпись: [{}]", hex::encode(&tranza_full.ara) );
+    println!("==> Вся посылка целиком:\n[{str}]");
+
+    str
 
 // https://github.com/Alzymologist/substrate-parser/blob/6e45f461dfed4b02f9e3084d379f0a3d5b4cf0cc/src/tests.rs#L269
-
 // alexander_slesarev: что идёт в подписываемую транзакцию на самом деле:
 // метод, потом екстеншн
 // Метод ты правильно раздуплил, теперь про екстеншн.екстеншн состоит из:
-
-// - эра
-    tranza_full.hex("00");
-
-// - компакт от нонса
-    tranza_full.compact(nonce);
-
-// - компакт от типа (0 норм)
-    tranza_full.hex("00");
-
+// // - эра
+//     tranza_full.hex("00");
+// // - компакт от нонса
+//     tranza_full.compact(ebola.nonce);
+// // - компакт от типа (0 норм)
+//     tranza_full.hex("00");
 // - версия метадаты (u32)
-
 // - версия транзакции (u32, скорее всего там что-то от 0 до 10 или в этом духе маленькое, называется оно TxVersion и наверное где-то его можно прочитать)
 // - генезис хеш
 // - хеш блока
-
-
-
-
 // let data = hex::decode("9c0403008eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a480284d717d5031504025a62029723000007000000e143f23803ac50e8f6f8e62695d1ce9e4e1d68aa36c1cd2cfd15340213f3423e98a8ee9e389043cd8a9954b254d822d34138b9ae97d3b7f50dc6781b13df8d84").unwrap();
 // let reply = parse_transaction(
 //     &data,
@@ -331,60 +396,7 @@ pub fn moke_send_money(from: &str, to: &str, money: u128, nonce: u128) -> String
 // )
 // .unwrap()
 // .card(&specs());
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // теперь бы ее суку как-то подписать Алисой
-    let sign = singme( &tranza.ara,  from );
-    
-    let era: u128 = 0; // 149;
-    // let Nonce: u128 = 1; // 8;
-    // let s: Value = client.request("system_accountNextIndex", rpc_params![ &format!( "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" ) ]).await?;
-    // let Nonce: u128 = s.as_u128().unwrap();
-
-
-    let mut tr = Tran { ara: [].to_vec() };
-    // Начало 84 (?? compact 33) 00
-    tr.hex("8400");
-    // From: Alice
-    tr.add_user("Alice");
-    // код 01
-    tr.hex("01");
-    // Sign
-    // for x in 1..65 { TR.hex("77"); }
-    tr.sign(sign);
-
-    // Эра: НЕ compact!
-    // TR.compact(era);
-    tr.hex("00");
-
-    // Nonce:01
-    tr.compact(nonce);
-    // Код 00
-    tr.hex("00");
-    // А теперь в конце посылки сама транзакция:
-    tr.bytes(&tranza.ara);
-    tr.add_len();
-    // END
-
-    let str = hex::encode(&tr.ara);
-    str
     // moke(&str).unwrap();
-
     // Result::Err(String::from("НЕ Отличненько"))
 }
 
@@ -394,15 +406,15 @@ pub fn singme(message: &[u8], account: &str) -> Signature {
     let pair = match sr25519::Pair::from_string(&account, None) {
             Ok(val) => val,
             Err(err) => {
-                println!("==> Error Pair [{}]: {:#?}, тогда будем использовать [//Alice]",&account,&err);
+                println!("==> Неточное имя [{}] ({:?}), будем использовать [//Alice]",&account,&err);
                 sr25519::Pair::from_string(&format!("//Alice"), None).unwrap()
             },
     };
-    println!("==> sign: [{}]", hex::encode( pair.public().to_raw_vec() ));
+    println!("==> ключ: [{}]", hex::encode( pair.public().to_raw_vec() ));
     let blytes: Signature = pair.sign(&message[..]);
-    println!("==> signed: [{}]", hex::encode(&blytes) );
+    println!("==> подписали: [{}]", hex::encode(&blytes) );
     // проверяем подпись
-    // let veri = sr25519::Pair::verify( &pair.sign(&message[..]) , &message[..], &pair.public() );
+    //let veri = sr25519::Pair::verify( &pair.sign(&message[..]) , &message[..], &pair.public() );
     // println!("--> проверка: {:#?}",&veri);
     // let s = format!("{}",&blytes); //  as &[u8]
     // let a: &[u8] = &hex::decode(hex).unwrap();    
