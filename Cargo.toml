@@ -1,5 +1,5 @@
 [package]
-name = "qdao-exosysd"
+name = "shave-try2"
 version = "0.1.0"
 edition = "2021"
 
@@ -19,7 +19,3 @@ serde_json = { version = "1.0.81", features = ["preserve_order"] }
 sp-core = { version = "6.0.0", default-features = false }
 tokio = { version = "1.19.2", features = ["full"] }
 
-##array-bytes = "4.2.0" #array-bytes = "6.0.0"
-
-## всякое говно из парсера пробуем
-## primitive-types = {version = "0.12.1", default-features = false}

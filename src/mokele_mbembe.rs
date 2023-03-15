@@ -2,11 +2,14 @@ use parity_scale_codec::{Compact, Decode, Encode}; // CompactLen, Encode,
 
 use std::collections::HashMap;
 
+// пробуем подстыковать нашу глобалку:
+use crate::Context;
+
 // привинчиваем подпись блокчейна
 use sp_core::{crypto::Pair, sr25519};
-use sp_core::ByteArray;
+// use sp_core::ByteArray;
 use sp_core::sr25519::Signature;
-use sp_core::sr25519::Public;
+// use sp_core::sr25519::Public;
 
 
 #[derive(Debug)]
@@ -164,21 +167,18 @@ pub fn moke(s: &str) -> Result<String, String> {
 
     println!("Массив: -------------\n0x{}-------------\n",s);
 
-
     let mut a: &[u8] = &hex::decode(&s).unwrap();
     println!("Массив длиной {}:",a.len());
     pr_mas(&a);
 
     // Смотрим длину (пока проверки не написал)
-    let o = Compact::<u64>::decode(&mut a).unwrap();
-//    println!("===========> Compact {:?}:",&o);
-//    println!("Массив длиной {}:",a.len());
-//    pr_mas(&a);
+    let o: u64 = Compact::<u64>::decode(&mut a).unwrap().into();
+    if (a.len() as u64) != o { return Result::Err(format!("Некорректная длина: реально {}, а указатель = {:?}",a.len(),o)); }
 
     let mut i=2;
     // проверим первые 2 байта, правильная ли посылка
     print!("Начало: "); pr_mas(&a[0..i]);
-    if a[0] != 0x84 && a[1] != 0x00 { return Result::Err(String::from("Некорректо, нужно 8400")); }
+    if a[0] != 0x84 && a[1] != 0x00 { return Result::Err(String::from("Некорректно, нужно 8400")); }
     a = &a[i..];
 
     // Кто автор транзакции?
@@ -186,7 +186,7 @@ pub fn moke(s: &str) -> Result<String, String> {
 
     // спецкод 01 - хер знает, что он значит
     i=1;  print!("Код 01: "); pr_mas(&a[0..i]);
-    if a[0] != 0x01 { return Result::Err(format!("Некорректо, нужно 01")); }
+    if a[0] != 0x01 { return Result::Err(format!("Некорректно, нужно 01")); }
     a = &a[i..];
 
     // подпись 64 байта (проверку пока не сделал, хотя уже знаю, как)
@@ -297,34 +297,32 @@ pub fn moke(s: &str) -> Result<String, String> {
 
 
 
-use crate::AllYouNeedIsLove;
-
-pub fn moke_send_money(from: &str, to: &str, money: u128, ebola: &AllYouNeedIsLove ) -> String {
+pub fn moke_send_money(context: &Context, from: &str, to: &str, money: u128 ) -> String {
 
     // Вот такие нам прилетели данные:
 
-    println!("
------- ebola --------
-Method:      mb
-Era:         {}
-Nonce:       {}
-Tip:         00
-SpecVersion: {}
-GenesisHash: {}
-BlockHash:   {}
-TransactionVersion: {}
-.....
-From:  [{from}]
-To:    [{to}]
-Money: {money}
-----------------------",
-    ebola.era,
-    ebola.nonce,
-    ebola.spec_version,
-    ebola.genesis_hash,
-    ebola.block_hash,
-    ebola.transaction_version
-);
+//     println!("
+// ------ context --------
+// Method:      mb
+// Era:         {}
+// Nonce:       {}
+// Tip:         00
+// SpecVersion: {}
+// GenesisHash: {}
+// BlockHash:   {}
+// TransactionVersion: {}
+// .....
+// From:  [{from}]
+// To:    [{to}]
+// Money: {money}
+// ----------------------",
+//     context.era,
+//     context.nonce,
+//     context.spec_version,
+//     context.genesis_hash,
+//     context.block_hash,
+//     context.transaction_version
+// );
     
     // Сама операция, пример: 0500 00 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 04
     let mut tranza = Tran { ara: [].to_vec() };
@@ -336,14 +334,16 @@ Money: {money}
     // Теперь делаем расширенную версию операуии для подписи по схеме мистера Трона:
     let mut tranza_full = tranza.clone(); // само тело транзакции
     tranza_full.hex("00"); // Era: можно 00
-    tranza_full.compact(ebola.nonce); // Nonce:
+    // tranza_full.hex("0501"); // Era: можно 00
+    tranza_full.compact(context.nonce); // Nonce:
     tranza_full.hex("00"); // Tip: чаевые, можно 00
-    tranza_full.u32(&ebola.spec_version); // SpecVersion: просто u32, без compact (!)
-    // tranza_full.compact(ebola.spec_version as u128); // SpecVersion: но пробовал и compact
-    tranza_full.hexstring(&ebola.genesis_hash); // GenesisHash
-    tranza_full.hexstring(&ebola.block_hash); // BlockHash
-    tranza_full.u32(&ebola.transaction_version); // TransactionVersion: просто u32, без compact (!)
-    // tranza_full.compact(ebola.transaction_version as u128); // TransactionVersion: но пробовал и compact
+    tranza_full.u32(&context.spec_version); // SpecVersion: просто u32, без compact (!)
+    // tranza_full.compact(context.spec_version as u128); // SpecVersion: но пробовал и compact
+    tranza_full.u32(&context.transaction_version); // TransactionVersion: просто u32, без compact (!)
+    // tranza_full.compact(context.transaction_version as u128); // TransactionVersion: но пробовал и compact
+    tranza_full.hexstring(&context.genesis_hash.to_string()); // GenesisHash
+    // tranza_full.hexstring(&context.block_hash); // BlockHash
+    tranza_full.hexstring(&context.genesis_hash.to_string()); // GenesisHash
 
     // теперь бы ее суку как-то подписать Алисой:
     let sign = singme( &tranza_full.ara, from );
@@ -354,8 +354,11 @@ Money: {money}
     tr.add_user("Alice"); // From: Alice
     tr.hex("01"); // код 01
     tr.sign(sign); // здесь вставляем подпись
+    
     tr.hex("00"); // Эра: можно 00, НЕ compact! TR.compact(era);
-    tr.compact(ebola.nonce); // Nonce
+    // tr.hex("0501");
+
+    tr.compact(context.nonce); // Nonce
     tr.hex("00"); // Код 00
     tr.bytes(&tranza.ara); // сама операция (короткая версия)
     tr.add_len(); // и в начало добавим compact-длину всей этой мандулы
@@ -363,10 +366,9 @@ Money: {money}
 
     let str = hex::encode(&tr.ara);
 
-    println!("==> Операция: [{}]", hex::encode(&tranza.ara) );
-    println!("==> Операция на подпись: [{}]", hex::encode(&tranza_full.ara) );
-    println!("==> Вся посылка целиком:\n[{str}]");
-
+    // println!("==> Операция: [{}]", hex::encode(&tranza.ara) );
+    // println!("==> Операция на подпись: [{}]", hex::encode(&tranza_full.ara) );
+    // println!("==> Вся посылка целиком:\n[{str}]");
     str
 
 // https://github.com/Alzymologist/substrate-parser/blob/6e45f461dfed4b02f9e3084d379f0a3d5b4cf0cc/src/tests.rs#L269
@@ -376,7 +378,7 @@ Money: {money}
 // // - эра
 //     tranza_full.hex("00");
 // // - компакт от нонса
-//     tranza_full.compact(ebola.nonce);
+//     tranza_full.compact(context.nonce);
 // // - компакт от типа (0 норм)
 //     tranza_full.hex("00");
 // - версия метадаты (u32)
@@ -405,14 +407,14 @@ pub fn singme(message: &[u8], account: &str) -> Signature {
     // let suri = SecretUri::from_str(account).expect("Parse SURI");
     let pair = match sr25519::Pair::from_string(&account, None) {
             Ok(val) => val,
-            Err(err) => {
-                println!("==> Неточное имя [{}] ({:?}), будем использовать [//Alice]",&account,&err);
+            Err(_) => {
+                // println!("==> Неточное имя [{}] ({:?}), будем использовать [//Alice]",&account,&err);
                 sr25519::Pair::from_string(&format!("//Alice"), None).unwrap()
             },
     };
-    println!("==> ключ: [{}]", hex::encode( pair.public().to_raw_vec() ));
+    // println!("==> ключ: [{}]", hex::encode( pair.public().to_raw_vec() ));
     let blytes: Signature = pair.sign(&message[..]);
-    println!("==> подписали: [{}]", hex::encode(&blytes) );
+    // println!("==> подписали: [{}]", hex::encode(&blytes) );
     // проверяем подпись
     //let veri = sr25519::Pair::verify( &pair.sign(&message[..]) , &message[..], &pair.public() );
     // println!("--> проверка: {:#?}",&veri);
