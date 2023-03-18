@@ -1,21 +1,42 @@
 [package]
-name = "shave-try2"
+name = "rust-wget"
 version = "0.1.0"
+authors = ["raydwaipayan <dwaipayanray1@gmail.com>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-anyhow = "1.0.58"
-clap = { version = "3.2.5", features = ["env", "derive"] }
-frame-metadata = "15.0.0"
-hex = "0.4.3"
-jsonrpsee = {version = "0.15.1", features = ["ws-client"]}
-lazy_static = "1.4.0"
-parity-scale-codec = "3.1.5"
-substrate_parser = "*" # { git = "https://github.com/Alzymologist/substrate-parser" }
+reqwest = { version = "0.11.14", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+serde_json = { version = "1.0.81" } #, features = ["preserve_order"] }
 regex = "1.5.4"
-serde_json = { version = "1.0.81", features = ["preserve_order"] }
-sp-core = { version = "6.0.0", default-features = false }
-tokio = { version = "1.19.2", features = ["full"] }
 
+hex = "0.4.3"
+parity-scale-codec = "3.1.5"
+
+ws = "0.9.2"
+
+
+
+
+
+
+
+
+
+
+# пробуем добавить все от субстрата
+#anyhow = "1.0.58"
+#clap = { version = "3.2.5", features = ["env", "derive"] }
+#frame-metadata = "15.0.0"
+
+#jsonrpsee = {version = "0.15.1", features = ["ws-client"]}
+#lazy_static = "1.4.0"
+
+#serde_json = { version = "1.0.81", features = ["preserve_order"] }
+#tokio = { version = "1.19.2", features = ["full"] }
+
+#substrate_parser = "*" # { git = "https://github.com/Alzymologist/substrate-parser" }
+#sp-core = { version = "9.0.0", default-features = false }
+sp-core = "9.0.0"
+# sp-core = {version = "9.0.0", default-features = false, features = ["full_crypto"]}
